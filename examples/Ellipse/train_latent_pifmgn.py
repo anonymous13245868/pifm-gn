@@ -51,7 +51,7 @@ train_settings = dgn.nn.TrainingSettings(
     device        = torch.device(f'cuda:{args.gpu}') if args.gpu >= 0 else torch.device('cpu'),
 )
 
-# Training dataset - 确保包含位置信息和适合VGAE的变换
+# Training dataset
 transform = transforms.Compose([
     dgn.transforms.MeshEllipse(),                               
     dgn.transforms.ScaleEdgeAttr(0.02),                        
@@ -99,12 +99,11 @@ arch = {
     'div_penalty':        0.1,                          
 }
 
-from dgn4cfd.nn.flow_matching.models.latent_PIFMGN import LatentConservationFlowMatchingGraphNet
+from ...nn.flow_matching.models.latent_PIFMGN import LatentConservationFlowMatchingGraphNet
 
 model = LatentConservationFlowMatchingGraphNet(
     autoencoder_checkpoint = experiment['autoencoder'],
     arch = arch,
 )
 
-# 训练
 model.fit(train_settings, dataloader)

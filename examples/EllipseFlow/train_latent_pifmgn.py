@@ -21,22 +21,19 @@ parser.add_argument('--experiment_id', type=int, default=0)
 parser.add_argument('--gpu',           type=int, default=0)
 args = parser.parse_args()
 
-# 固定随机种子
 seed = 0
 torch.manual_seed(seed)
 
 # ------------------------------------
-# experiment 配置
-# ------------------------------------
 experiment = {
     0: {
         'name':          'Latent_PIFMGN_EllipseFlow',
-        'autoencoder':   './checkpoints/ae-nt10.chk',  # 请替换为自编码器检查点的实际路径
-        'depths':        [1, 2, 2],  # 在潜在空间中使用更简单的网络结构
+        'autoencoder':   './checkpoints/ae-nt10.chk',  #
+        'depths':        [1, 2, 2],  #
         'width':         128,
-        'nt':            10,  # 时间步长上限
-        'potential_dim': 2,   # 势函数维度
-        'rbf_dim':       16,  # RBF 嵌入维度
+        'nt':            10,  # 
+        'potential_dim': 2,   #
+        'rbf_dim':       16,  #
     },
 }[args.experiment_id]
 
@@ -59,8 +56,6 @@ train_settings = dgn.nn.TrainingSettings(
 )
 
 # ------------------------------------
-# 数据预处理 transform
-# ------------------------------------
 transform = transforms.Compose([
     dgn.transforms.ConnectKNN(6),                                                                              # Create an edge to each node from its 6 nearest neighbors
     dgn.transforms.ScaleEdgeAttr(0.15),                                                                        # Scale the edge attributes (relative positions)
@@ -73,8 +68,6 @@ transform = transforms.Compose([
     ),
 ])
 
-# ------------------------------------
-# 数据集与 DataLoader
 # ------------------------------------
 dataset = dgn.datasets.uvpAroundEllipse(
     path      = '/PATH/TO/datasets--mariolinov--Ellipse/uvpAroundEllipseTrain.h5',
@@ -94,9 +87,7 @@ dataloader = dgn.DataLoader(
 )
 
 # ------------------------------------
-# 构建模型
-# ------------------------------------
-from dgn4cfd.nn.flow_matching.models.latent_PIFMGN import LatentConservationFlowMatchingGraphNet
+from ...nn.flow_matching.models.latent_PIFMGN import LatentConservationFlowMatchingGraphNet
 
 arch = {
     'in_node_features':   1,      
@@ -106,7 +97,6 @@ arch = {
     'fnns_width':         experiment['width'],
     'aggr':               'sum',
     'dropout':            0.1,
-    # PIFMGN 专属
     'potential_dim':      experiment['potential_dim'],
     'rbf_dim':            experiment['rbf_dim'],
     'dim':                2,      
@@ -114,13 +104,10 @@ arch = {
     'div_penalty':        0.1,  
 }
 
-# 创建Latent PIFMGN模型实例
 model = LatentConservationFlowMatchingGraphNet(
     autoencoder_checkpoint = experiment['autoencoder'],
     arch = arch,
 )
 
-# ------------------------------------
-# 启动训练
 # ------------------------------------
 model.fit(train_settings, dataloader)

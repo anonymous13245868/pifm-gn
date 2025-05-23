@@ -11,7 +11,6 @@ from torchvision import transforms
 import argparse
 
 import dgn4cfd as dgn
-# 保证多进程下共享内存不会出错
 torch.multiprocessing.set_sharing_strategy('file_system')
 
 # ------------------------------------
@@ -22,12 +21,10 @@ parser.add_argument('--experiment_id', type=int, default=0)
 parser.add_argument('--gpu',           type=int, default=0)
 args = parser.parse_args()
 
-# 固定随机种子
 seed = 0
 torch.manual_seed(seed)
 
 # ------------------------------------
-# experiment 配置
 # ------------------------------------
 experiment = {
     0: {
@@ -59,8 +56,6 @@ train_settings = dgn.nn.TrainingSettings(
 )
 
 # ------------------------------------
-# 数据预处理 transform
-# ------------------------------------
 transform = transforms.Compose([
     dgn.transforms.ConnectKNN(6),                                                                              # Create an edge to each node from its 6 nearest neighbors
     dgn.transforms.ScaleEdgeAttr(0.15),                                                                        # Scale the edge attributes (relative positions)
@@ -73,8 +68,6 @@ transform = transforms.Compose([
     ),
 ])
 
-# ------------------------------------
-# 数据集与 DataLoader
 # ------------------------------------
 dataset = dgn.datasets.uvpAroundEllipse(
     # path      = dgn.datasets.DatasetDownloader(
@@ -97,9 +90,7 @@ dataloader = dgn.DataLoader(
 )
 
 # ------------------------------------
-# 构建模型
-# ------------------------------------
-from dgn4cfd.nn.flow_matching.models.pifmgn import ConservationFlowMatchingGraphNet_MIX
+from ...nn.flow_matching.models.pifmgn import ConservationFlowMatchingGraphNet_MIX
 
 arch = {
     'in_node_features':   3,  
@@ -109,15 +100,10 @@ arch = {
     'fnns_width':         experiment['width'],
     'aggr':               'sum',
     'dropout':            0.1,
-    # PIFMGN 专属
     'potential_dim':      experiment['potential_dim'],
     'rbf_dim':            experiment['rbf_dim'],
-    'dim':                2,  # 2D 问题
+    'dim':                2,  #
 }
 
 model = ConservationFlowMatchingGraphNet_MIX(arch = arch)
-
-# ------------------------------------
-# 启动训练
-# ------------------------------------
 model.fit(train_settings, dataloader)

@@ -10,32 +10,27 @@ from torchvision import transforms
 import argparse
 
 import dgn4cfd as dgn
-# 引入 PIFMGN 模型
-from dgn4cfd.nn.flow_matching.models.clfmgn_mix import ConservationFlowMatchingGraphNet_MIX
+from ...nn.flow_matching.models.clfmgn_mix import ConservationFlowMatchingGraphNet_MIX
 
 torch.multiprocessing.set_sharing_strategy('file_system')
 
-# 解析命令行参数
 argparser = argparse.ArgumentParser()
 argparser.add_argument('--experiment_id', type=int, default=0)
 argparser.add_argument('--gpu',           type=int, default=0)
 args = argparser.parse_args()
 
-# 固定随机种子，确保可重复
 seed = 0
 torch.manual_seed(seed)
 
-# 不同实验配置
 experiment = {
     0: {
         'name':          'PIFMGN_Wing',
-        'nt':             250,   # 时序长度与 FMGN 相同
-        'potential_dim':   3,     # 3D 流场对应 3 维势函数
-        'rbf_dim':        16,     # RBF 距离嵌入维度
+        'nt':             250,   
+        'potential_dim':   3,     
+        'rbf_dim':        16,     
     },
 }[args.experiment_id]
 
-# 训练超参数
 train_settings = dgn.nn.TrainingSettings(
     name          = experiment['name'],
     folder        = './checkpoints_my',
@@ -52,27 +47,19 @@ train_settings = dgn.nn.TrainingSettings(
     device        = torch.device(f'cuda:{args.gpu}') if args.gpu >= 0 else torch.device('cpu'),
 )
 
-# 数据预处理 transform
 transform = transforms.Compose([
-    # 缩放边上相对位置向量
     dgn.transforms.ScaleEdgeAttr(0.015),
-    # 增加自由流速度在局部边坐标系下的投影
     dgn.transforms.EdgeCondFreeStream(normals='loc'),
-    # 缩放目标场（压力）
     dgn.transforms.ScaleAttr('target', vmin=-1850, vmax=400),
-    # 多尺度图粗化
     dgn.transforms.MeshCoarsening(
         num_scales      = 6,
         rel_pos_scaling = [0.015, 0.03, 0.06, 0.12, 0.2, 0.4],
         scalar_rel_pos  = True,
     ),
-    # （可选）如果后续需要显式 pos 属性，可加上：
     # dgn.transforms.PreserveAttribute('pos'),
 ])
 
-# 数据集及加载器
 dataset = dgn.datasets.pOnWing(
-    # path       = dgn.datasets.DatasetDownloader(dgn.datasets.DatasetUrl.pOnWingTrain).file_path,
     path = '/PATH/TO/datasets--mariolinov--Wing/pOnWingTrain.h5',
     T          = experiment['nt'],
     transform  = transform,
@@ -88,17 +75,15 @@ dataloader = dgn.DataLoader(
     prefetch_factor    = 4,
 )
 
-# PIFMGN 模型架构
 arch = {
-    'dim':                3,   # 3D 问题
-    'in_node_features':   1,   # 噪声压力
-    'cond_node_features': 3,   # 法向量 (nx, ny, nz)
-    'cond_edge_features': 6,   # 边上相对位置 + 自由流投影 (共 6 维)
+    'dim':                3,   
+    'in_node_features':   1,   
+    'cond_node_features': 3,   
+    'cond_edge_features': 6,   
     'depths':             6 * [2],
     'fnns_width':         128,
     'aggr':               'sum',
     'dropout':            0.1,
-    # Conservation FlowMatching 特有
     'potential_dim':      experiment['potential_dim'],
     'rbf_dim':            experiment['rbf_dim'],
 }
